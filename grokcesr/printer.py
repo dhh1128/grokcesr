@@ -30,13 +30,14 @@ footer = """</pre>
 """
 
 
-def pretty_print(data):
-    if isinstance(data, int):
-        if data.type == header_symbol:
-                print(header)
-        elif data.type == footer_symbol:
-                print(footer)
-    elif isinstance(data, str):
-        print(data)
-    else:
-        print(f"<code>{data}</code>")
+def pretty_print(token, fout):
+    if isinstance(token, VariableContentToken) or isinstance(token, UniformContentToken):
+        out = token.value
+    elif isinstance(token, LogicalToken):
+        if token.value == tt_bof:
+            out = header
+        elif token.value == tt_eof:
+            out = footer
+        else:
+            out = ""
+    fout.write(out)

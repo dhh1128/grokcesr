@@ -252,6 +252,10 @@ class LogicalToken:
         global tt_names_by_value
         return "(%s)" % tt_names_by_value[self.value]
 
+    @property
+    def type_name(self):
+        return tt_names_by_value[self.value]
+
 
 class UniformContentToken:
     """
@@ -263,6 +267,11 @@ class UniformContentToken:
 
     def __str__(self):
         return self.value
+
+    @property
+    def type_name(self):
+        return tt_names_by_value[self.value]
+
 
 
 class VariableContentToken:
@@ -276,3 +285,7 @@ class VariableContentToken:
 
     def __str__(self):
         return "%s, value = %s" % (tt_names_by_value[self.typ], self.value)
+
+    @property
+    def type_name(self):
+        return tt_names_by_value[self.typ]

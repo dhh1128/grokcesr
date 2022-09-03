@@ -14,8 +14,8 @@ def main(argv):
         try:
             with open(argv[1], "rb") as f:
                 cesr = f.read()
-                for token_type, token in parse(cesr):
-                    pretty_print(token_type, token)
+                for token in parse(cesr):
+                    pretty_print(token, sys.stdout)
         except:
             import traceback
             traceback.print_exc()
