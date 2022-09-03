@@ -38,6 +38,7 @@ def assert_in_obj(obj_content, *expected):
 
 
 def test_parse_basic():
+    assert_parse('', tt_bof, tt_eof)
     assert_parse('{}', tt_bof, '{', '}', tt_eof)
     assert_parse('abc', tt_bof, tt_begin_bin, (tt_blob, "abc"), tt_end_bin, tt_eof)
     assert_parse('{}abc', tt_bof, '{', '}', tt_begin_bin, (tt_blob, "abc"), tt_end_bin, tt_eof)
@@ -91,3 +92,29 @@ def test_whitespace():
         (tt_whitespace, '\n'), (tt_num_value, '0'), (tt_whitespace, ' '), tt_comma,
         (tt_whitespace, '\t'), (tt_num_value, '12345'), (tt_whitespace, ' '),
         tt_end_arr)
+
+
+def assert_error(cesr, emsg):
+    try:
+        # Consume tokens to allow exception to be raised.
+        for t in parse(cesr):
+            pass
+    except Exception as e:
+        assert emsg in str(e)
+        return
+    raise Exception('Expected error message containing "%s" but got no error.' % emsg)
+
+
+def test_nested():
+    assert_in_obj('"a":[{"b":0, "c": false,  "d":{}}]',
+        (tt_key, '"a"'), tt_colon, '[',
+        tt_begin_obj, (tt_key, '"b"'), tt_colon, (tt_num_value, '0') , tt_comma,
+        (tt_whitespace, ' '), (tt_key, '"c"'), tt_colon, (tt_whitespace, ' '),
+        (tt_reserved_value, 'false'), tt_comma, (tt_whitespace, '  '),
+        (tt_key, '"d"'), tt_colon, tt_begin_obj, tt_end_obj, tt_end_obj, tt_end_arr)
+
+
+def test_open():
+    assert_error('{', "expected end of JSON obj")
+    assert_error('{"a":1', "expected end of JSON obj")
+    assert_error('{"a":[}', "expected JSON value")

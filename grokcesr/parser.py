@@ -35,10 +35,10 @@ def parse_error(state, comment):
     linebreaks = linebreak_pat.findall(prior)
     line = 1 + len(linebreaks)
     if linebreaks:
-        position = "col %d (line %d, col %d)" % (state.offset, line, linebreaks[-1].end())
+        position = "offset %d (line %d, offset %d)" % (state.offset, line, linebreaks[-1].end())
     else:
-        position = "col %d" % state.offset
-    msg = "Invalid data at %s: %s", (position, str(state).replace("➤", ">>"))
+        position = "offset %d" % state.offset
+    msg = "Invalid data at %s; %s: %s" % (position, comment, str(state).replace("➤", "-->"))
     return Exception(msg)
 
 
@@ -72,7 +72,7 @@ def parse_json_arr(state):
             state.offset += 1
             return
         elif must_end:
-            raise parse_error(state, "expected end of array")
+            break
         # Consume one value in the array.
         for token in parse_json_val(state):
                 yield token
@@ -87,6 +87,7 @@ def parse_json_arr(state):
             state.offset = m.end()
         else:
             must_end = True
+    raise parse_error(state, "expected end of JSON array")
 
 
 def parse_json_val(state):
@@ -128,7 +129,7 @@ def parse_json_obj(state):
             state.offset += 1
             return
         elif must_end:
-           raise parse_error("expected end of JSON obj")
+            break
         m = key_pat.match(state.cesr, state.offset)
         if not m:
             raise Exception("expected JSON key")
@@ -158,6 +159,7 @@ def parse_json_obj(state):
             state.offset = m.end()
         else:
             must_end = True
+    raise Exception("expected end of JSON object")
 
 
 def run_parse_function(func, beginner, ender, state):
