@@ -30,27 +30,38 @@ tt_names_by_value = x
 del(x)
 
 
-def get_tt_name(tt_value):
-    g = globals()
-    for name in _tt_names:
-        if g[name] == tt_value:
-            return name
+def parse_error(state, comment):
+    prior = state.cesr[:state.offset]
+    linebreaks = linebreak_pat.findall(prior)
+    line = 1 + len(linebreaks)
+    if linebreaks:
+        position = "col %d (line %d, col %d)" % (state.offset, line, linebreaks[-1].end())
+    else:
+        position = "col %d" % state.offset
+    msg = "Invalid data at %s: %s", (position, str(state).replace("➤", ">>"))
+    return Exception(msg)
 
 
 # Used to parse json
 key_pat = re.compile(r'([\r\n\t ]*)("[^"]*")([\r\n\t ]*):([\r\n\t ]*)')
 reserved_pat = re.compile(r'null|true|false')
 num_pat = re.compile(r'(-?)(\d+(?:[.]\d+)?)(e\d+)?')
-comma_pat = re.compile(r'([\r\n\t ]*),')
+comma_pat = re.compile(r'([\r\n\t ]*),([\r\n\t ]*)')
 end_of_obj_pat = re.compile(r'([\r\n\t ]*)}')
 end_of_arr_pat = re.compile(r'([\r\n\t ]*)\]')
+whitespace_pat = re.compile(r'[\r\n\t ]+')
+linebreak_pat = re.compile(r'\r?\n|\r[^\n]')
 
 
 def parse_json_arr(state):
     # function starts pointing at [; consume that.
     state.offset += 1
-    must_end = False
+    # Now that we're inside the open bracket, check for leading whitespace.
+    m = whitespace_pat.match(state.cesr, state.offset)
+    if m:
+        yield VariableContentToken(tt_whitespace, state.until(m.end()))
     # Loop over all the elements of the array
+    must_end = False
     while not state.done:
         # Check to see if the array is ending.
         m = end_of_arr_pat.match(state.cesr, state.offset)
@@ -61,16 +72,19 @@ def parse_json_arr(state):
             state.offset += 1
             return
         elif must_end:
-            raise Exception("expected end of array at %d" % state.offset)
+            raise parse_error(state, "expected end of array")
         # Consume one value in the array.
         for token in parse_json_val(state):
                 yield token
         # See if the array is continued. If it is, consume the comma and emit tokens as needed.
         m = comma_pat.match(state.cesr, state.offset)
         if m:
-            yield VariableContentToken(tt_whitespace, state.until(m.end() - 1))
+            if m.group(1):
+                yield VariableContentToken(tt_whitespace, m.group(1))
             yield UniformContentToken(tt_comma)
-            state.offset += 1
+            if m.group(2):
+                yield VariableContentToken(tt_whitespace, m.group(2))
+            state.offset = m.end()
         else:
             must_end = True
 
@@ -94,7 +108,7 @@ def parse_json_val(state):
         if m:
             yield VariableContentToken(tt, state.until(m.end()))
         else:
-            raise Exception("malformed json at %d" % state.offset)
+            raise parse_error(state, "expected JSON value")
     if func:
         for t in run_parse_function(func, b, e, state):
             yield t
@@ -114,10 +128,10 @@ def parse_json_obj(state):
             state.offset += 1
             return
         elif must_end:
-           raise Exception("expected end of obj at %d" % state.offset)
+           raise parse_error("expected end of JSON obj")
         m = key_pat.match(state.cesr, state.offset)
         if not m:
-            raise Exception("malformed json at %d" % state.offset)
+            raise Exception("expected JSON key")
         state.offset = m.end()
         if m.group(1):
             yield VariableContentToken(tt_whitespace, m.group(1))
@@ -136,11 +150,12 @@ def parse_json_obj(state):
                 yield token
         m = comma_pat.match(state.cesr, state.offset)
         if m:
-            whitespace = state.until(m.end() - 1)
-            if whitespace:
-                yield VariableContentToken(tt_whitespace, state.until(m.end() - 1))
+            if m.group(1):
+                yield VariableContentToken(tt_whitespace, m.group(1))
             yield UniformContentToken(tt_comma)
-            state.offset += 1
+            if m.group(2):
+                yield VariableContentToken(tt_whitespace, m.group(2))
+            state.offset = m.end()
         else:
             must_end = True
 

@@ -74,3 +74,20 @@ def test_obj_two_keys_str_num():
         (tt_key, '"a"'), tt_colon, (tt_str_value, '"true"'), tt_comma,
         (tt_key, '"b"'), tt_colon, (tt_num_value, '1.3e7')
     )
+
+
+def test_array():
+    assert_in_obj('"a":[]', (tt_key, '"a"'), tt_colon, '[', ']')
+    assert_in_obj('"a":[1,null]', (tt_key, '"a"'), tt_colon, '[', (tt_num_value, '1'), tt_comma, (tt_reserved_value, "null"), ']')
+
+
+def test_whitespace():
+    assert_in_obj('\n  "a" :\t0',
+        (tt_whitespace, '\n  '), (tt_key, '"a"'), (tt_whitespace, ' '), tt_colon,
+        (tt_whitespace, '\t'), (tt_num_value, '0'))
+    assert_in_obj('\r  "a"\r:\t[\n0 ,\t12345 ]',
+        (tt_whitespace, '\r  '), (tt_key, '"a"'), (tt_whitespace, '\r'), tt_colon,
+        (tt_whitespace, '\t'), tt_begin_arr,
+        (tt_whitespace, '\n'), (tt_num_value, '0'), (tt_whitespace, ' '), tt_comma,
+        (tt_whitespace, '\t'), (tt_num_value, '12345'), (tt_whitespace, ' '),
+        tt_end_arr)
